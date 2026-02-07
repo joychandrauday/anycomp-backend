@@ -101,6 +101,7 @@ class App {
       });
     });
 
+    this.app.set('trust proxy', true);
     // API Routes
     this.app.use('/auth', authRoutes);
     this.app.use('/api/v1/user', userRoutes);
