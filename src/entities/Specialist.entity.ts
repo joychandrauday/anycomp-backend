@@ -76,7 +76,6 @@ export class Specialist {
   @IsBoolean()
   is_draft: boolean;
 
-
   @Column({
     type: 'enum',
     enum: VerificationStatus,
@@ -95,14 +94,9 @@ export class Specialist {
   })
   specialist_status: SpecialistStatus;
 
-  @Column({ default: 0 })
-  total_clients_served: number;
 
   @Column({ default: 0 })
   total_projects_completed: number;
-
-  @Column({ type: 'decimal', precision: 5, scale: 2, default: 100 })
-  success_rate: number;
 
   @Column()
   @IsNumber()
@@ -110,10 +104,8 @@ export class Specialist {
   @Max(365)
   duration_days: number;
 
-  // inside Specialist entity
   @Column({ type: 'jsonb', nullable: true })
   additional_offerings: string[];
-
 
   @Column({ type: 'jsonb', nullable: true })
   expertise_areas: string[];
@@ -127,16 +119,6 @@ export class Specialist {
     credential_id?: string;
   }>;
 
-  @Column({ type: 'jsonb', nullable: true })
-  education: Array<{
-    degree: string;
-    field: string;
-    institution: string;
-    graduation_year: number;
-  }>;
-
-  @Column({ type: 'jsonb', nullable: true })
-  languages: string[];
 
   // Foreign Keys
   @Column({ name: 'created_by_id', type: 'uuid' })
@@ -145,7 +127,7 @@ export class Specialist {
   @Column({ name: 'assigned_secretary_id', type: 'uuid', nullable: true })
   assigned_secretary_id?: string;
 
-  // Relations
+  // Relations - UPDATED TO MATCH YOUR EXISTING ENTITIES
   @ManyToOne(() => User, (user) => user.specialists)
   @JoinColumn({ name: 'created_by_id' })
   created_by: User;

@@ -72,6 +72,7 @@ export class Media {
   @IsEnum(MediaType)
   media_type: MediaType;
 
+  // nullable
   // Foreign Keys
   @Column({ name: 'specialist_id', type: 'uuid' })
   specialist_id: string;

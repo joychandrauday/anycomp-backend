@@ -1,7 +1,9 @@
 import { AppDataSource } from "../../config/database.config";
-import { Repository, FindOptionsWhere, Like } from "typeorm";
+import { Repository, FindOptionsWhere, Like, Between, MoreThanOrEqual, LessThanOrEqual } from "typeorm";
 import { Specialist, VerificationStatus } from "../../entities/Specialist.entity";
 import { User, UserRole } from "../../entities/User.entity";
+import { Media, MediaType, MimeType } from "../../entities/Media.entity";
+import { CloudinaryUploader } from "../../utils/cloudinary.utils";
 
 export interface CreateSpecialistDto {
     title: string;
@@ -22,14 +24,18 @@ export interface UpdateSpecialistDto {
 
 export interface SpecialistFilter {
     title?: string;
+    description?: string;
     min_price?: number;
     max_price?: number;
     is_draft?: boolean;
     verification_status?: VerificationStatus;
 }
 
+
 export class SpecialistsService {
     private repo: Repository<Specialist>;
+    private specialistRepo = AppDataSource.getRepository(Specialist);
+    private mediaRepo = AppDataSource.getRepository(Media);
 
     constructor() {
         this.repo = AppDataSource.getRepository(Specialist);
@@ -58,6 +64,7 @@ export class SpecialistsService {
         if (userRole !== UserRole.SUPER_ADMIN) {
             where.is_draft = false;
             where.verification_status = VerificationStatus.VERIFIED;
+
         }
         console.log(where, userRole);
         const [data, total] = await this.repo.findAndCount({
@@ -72,8 +79,14 @@ export class SpecialistsService {
     }
 
     /** Find a single specialist by ID */
-    async findOne(id: string, userId?: string, userRole?: UserRole): Promise<Specialist> {
-        const specialist = await this.repo.findOne({ where: { id } });
+    async findOne(slug: string, userId?: string, userRole?: UserRole): Promise<Specialist> {
+        const specialist = await this.repo.findOne({
+            where: { slug },
+            relations: [
+                'media',
+                'assigned_secretary'
+            ]
+        });
         if (!specialist) throw new Error("Specialist not found");
 
         // Only allow draft view for admins or the creator
@@ -84,27 +97,98 @@ export class SpecialistsService {
         return specialist;
     }
 
-    /** Create a new specialist */
-    async create(data: CreateSpecialistDto, userId: string): Promise<Specialist> {
-        const specialist = this.repo.create({
-            ...data,
+    async create(
+        data: any, // Using 'any' briefly to handle FormData string conversion
+        userId: string,
+        files?: { [fieldname: string]: Express.Multer.File[] }
+    ): Promise<Specialist> {
+
+        // --- 1. PREPARE DATA ---
+        // FormData sends numbers/booleans as strings. We might need to parse them.
+        // Additionally, 'additional_offerings' comes as a JSON string.
+
+        let parsedOfferings = data.additional_offerings;
+        if (typeof data.additional_offerings === 'string') {
+            try {
+                parsedOfferings = JSON.parse(data.additional_offerings);
+            } catch (e) {
+                parsedOfferings = [];
+            }
+        }
+        // if not draft rhen make it verified
+        const is_verified = data.is_draft === 'true' || data.is_draft === true ? false : true;
+        // Create the Specialist Entity
+        const newSpecialist = this.specialistRepo.create({
+            title: data.title,
+            description: data.description,
+            base_price: parseFloat(data.base_price), // Ensure number
+            platform_fee: parseFloat(data.platform_fee), // Ensure number
+            duration_days: parseInt(data.duration_days),
+            is_draft: data.is_draft === 'true' || data.is_draft === true,
+            is_verified,
+            additional_offerings: parsedOfferings,
+            assigned_secretary_id: data.assigned_secretary_id || null,
             created_by_id: userId,
-            platform_fee: data.platform_fee ?? 0,
-            is_draft: true,
-            verification_status: VerificationStatus.PENDING,
         });
 
-        return this.repo.save(specialist);
+        // Save Specialist first to generate the ID
+        const savedSpecialist = await this.specialistRepo.save(newSpecialist);
+
+        // --- 2. HANDLE IMAGES ---
+        if (files) {
+            const imageConfig = [
+                { key: 'image_1', type: MediaType.PROFILE, order: 0 },
+                { key: 'image_2', type: MediaType.GALLERY, order: 1 },
+                { key: 'image_3', type: MediaType.GALLERY, order: 2 }
+            ];
+
+            for (const config of imageConfig) {
+                const fileArray = files[config.key];
+                if (!fileArray || fileArray.length === 0) continue;
+
+                const file = fileArray[0];
+
+                try {
+                    const upload = await CloudinaryUploader.uploadFile(file, 'specialists');
+
+                    const media = this.mediaRepo.create({
+                        specialist_id: savedSpecialist.id, // assign column, not relation
+                        media_type: config.type,           // valid MediaType enum
+                        cloudinary_url: upload.url,
+                        cloudinary_public_id: upload.public_id,
+                        file_name: file.originalname,
+                        file_size: file.size,
+                        mime_type: file.mimetype as MimeType,
+                        display_order: config.order,
+                        // remove is_active if not in entity
+                    });
+
+                    await this.mediaRepo.save(media);
+                } catch (err) {
+                    console.error(`Failed to upload ${config.key}:`, err);
+                }
+            }
+        }
+
+        // --- 3. RETURN RESULT ---
+        // Fetch the specialist again with the relations (media) to return full object
+        return this.specialistRepo.findOne({
+            where: { id: savedSpecialist.id },
+            relations: ['media', 'created_by']
+        }) as Promise<Specialist>;
     }
 
     /** Update a specialist */
     async update(
-        id: string,
+        slug: string,
         data: UpdateSpecialistDto,
         userId: string,
         userRole?: UserRole
     ): Promise<Specialist> {
-        const specialist = await this.findOne(id, userId, userRole);
+        const specialist = await this.findOne(
+            slug
+        );
+        console.log(slug, specialist);
 
         if (userRole !== UserRole.ADMIN && specialist.created_by_id !== userId) {
             throw new Error('Not authorized to update this specialist');
@@ -134,6 +218,47 @@ export class SpecialistsService {
         Object.assign(specialist, rest);
 
         return this.repo.save(specialist);
+    }
+
+    /** Search specialists with separate filters */
+    /** Search specialists by a single keyword across multiple fields */
+    async searchSpecialistsByKeyword(
+        keyword: string,
+        userId?: string,
+        userRole?: UserRole
+    ): Promise<{ data: Specialist[]; total: number }> {
+
+        if (!keyword) {
+            return { data: [], total: 0 };
+        }
+
+        const where: FindOptionsWhere<Specialist>[] = [
+            { title: Like(`%${keyword}%`) },
+            { description: Like(`%${keyword}%`) },
+            // You can add more fields here:
+            // { slug: Like(`%${keyword}%`) },
+        ];
+
+        // For non-super-admins, apply visibility filters to each OR condition
+        if (userRole !== UserRole.SUPER_ADMIN) {
+            for (let condition of where) {
+                condition.is_draft = false;
+                condition.verification_status = VerificationStatus.VERIFIED;
+            }
+        }
+
+        const [data, total] = await this.repo.findAndCount({
+            where,
+            relations: [
+                'media',
+                'assigned_secretary',
+            ],
+            order: {
+                created_at: 'DESC',
+            },
+        });
+
+        return { data, total };
     }
 
 

@@ -39,6 +39,8 @@ export class ServiceOffering {
     @JoinColumn({ name: 'service_master_id' })
     master_service: ServiceMaster;
 
+    
+
     @CreateDateColumn()
     created_at: Date;
 

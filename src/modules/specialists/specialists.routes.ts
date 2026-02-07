@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import { SpecialistsController } from './specialists.controller';
 import { authMiddleware } from '../auth/auth.middleware';
+import { upload } from '../secretary/secretary.routes';
 
 const router = Router();
 
@@ -11,9 +12,16 @@ const router = Router();
 // CRUD
 router.get('/', SpecialistsController.findAll);
 router.get('/admin', authMiddleware, SpecialistsController.findAllAdmin);
-router.get('/:id', SpecialistsController.findOne);
-router.post('/', authMiddleware, SpecialistsController.create);
-router.put('/:id', authMiddleware, SpecialistsController.update);
+router.get('/service/search', authMiddleware, SpecialistsController.search);
+router.get('/:slug', SpecialistsController.findOne);
+router.post('/',
+    upload.fields([
+        { name: 'image_1', maxCount: 1 },
+        { name: 'image_2', maxCount: 1 },
+        { name: 'image_3', maxCount: 1 },
+    ]),
+    authMiddleware, SpecialistsController.create);
+router.put('/:slug', authMiddleware, SpecialistsController.update);
 router.delete('/:id', authMiddleware, SpecialistsController.delete);
 
 // Publish / Unpublish
