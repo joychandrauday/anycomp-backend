@@ -64,6 +64,8 @@ export class Secretary {
 
   @Column({ type: 'text', nullable: true })
   qualification: string;
+  @Column({ type: 'text', nullable: true, default: 'ST Comp Holdings' })
+  companyName: string;
 
   @Column({ type: 'text', nullable: true })
   experience: string;

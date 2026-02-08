@@ -69,10 +69,11 @@ export class SpecialistsService {
         console.log(where, userRole);
         const [data, total] = await this.repo.findAndCount({
             where,
-            relations: [
-                'media',
-                'assigned_secretary',
-            ],
+            relations: {
+                media: true,
+                assigned_secretary: true,
+
+            },
         });
 
         return { data, total };
@@ -82,6 +83,23 @@ export class SpecialistsService {
     async findOne(slug: string, userId?: string, userRole?: UserRole): Promise<Specialist> {
         const specialist = await this.repo.findOne({
             where: { slug },
+            relations: [
+                'media',
+                'assigned_secretary'
+            ]
+        });
+        if (!specialist) throw new Error("Specialist not found");
+
+        // Only allow draft view for admins or the creator
+        if (specialist.is_draft && userRole !== UserRole.ADMIN && specialist.created_by_id !== userId) {
+            throw new Error("Not authorized to view this specialist");
+        }
+
+        return specialist;
+    }
+    async findOneById(id: string, userId?: string, userRole?: UserRole): Promise<Specialist> {
+        const specialist = await this.repo.findOne({
+            where: { id },
             relations: [
                 'media',
                 'assigned_secretary'
@@ -276,7 +294,7 @@ export class SpecialistsService {
 
     /** Publish a specialist */
     async publish(id: string, userId: string, userRole?: UserRole): Promise<Specialist> {
-        const specialist = await this.findOne(id, userId, userRole);
+        const specialist = await this.findOneById(id, userId, userRole);
 
         if (userRole !== UserRole.ADMIN && specialist.created_by_id !== userId) {
             throw new Error("Not authorized to publish this specialist");
@@ -288,7 +306,7 @@ export class SpecialistsService {
 
     /** Unpublish a specialist */
     async unpublish(id: string, userId: string, userRole?: UserRole): Promise<Specialist> {
-        const specialist = await this.findOne(id, userId, userRole);
+        const specialist = await this.findOneById(id, userId, userRole);
 
         if (userRole !== UserRole.ADMIN && specialist.created_by_id !== userId) {
             throw new Error("Not authorized to unpublish this specialist");
@@ -310,7 +328,7 @@ export class SpecialistsService {
             throw new Error("Only admins can update verification status");
         }
 
-        const specialist = await this.findOne(id);
+        const specialist = await this.findOneById(id, userId, userRole);
         specialist.verification_status = status;
         specialist.is_verified = status === VerificationStatus.VERIFIED;
         return this.repo.save(specialist);
@@ -318,7 +336,7 @@ export class SpecialistsService {
 
     /** Update rating */
     async updateRating(id: string, rating: number): Promise<Specialist> {
-        const specialist = await this.findOne(id);
+        const specialist = await this.findOneById(id);
 
         // Calculate new average rating
         const totalRating = specialist.average_rating * specialist.total_number_of_ratings;

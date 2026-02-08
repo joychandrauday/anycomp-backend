@@ -13,6 +13,7 @@ export class SpecialistsController {
             console.log(result);
             res.json({ success: true, ...result });
         } catch (err: any) {
+            console.log(err);
             res.status(500).json({ success: false, error: err.message });
         }
     }

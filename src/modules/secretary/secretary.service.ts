@@ -14,10 +14,19 @@ export class SecretaryService {
     }
 
     async findAll(filters: any = {}): Promise<Secretary[]> {
-        return await this.secretaryRepository.find({
-            where: filters,
-            relations: ['user'],
-        });
+        return await this.secretaryRepository
+            .createQueryBuilder('secretary')
+            .leftJoinAndSelect('secretary.user', 'user')
+            .leftJoinAndSelect(
+                'secretary.managed_specialists',
+                'specialist'
+            )
+            .leftJoinAndSelect(
+                'secretary.managed_companies',
+                'company'
+            )
+            .where(filters)
+            .getMany();
     }
 
     async findById(id: string): Promise<Secretary | null> {
