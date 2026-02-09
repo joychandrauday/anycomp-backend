@@ -60,19 +60,13 @@ export class SpecialistsService {
             where.verification_status = filters.verification_status;
         }
 
-        // For regular users, only return published specialists
-        if (userRole !== UserRole.SUPER_ADMIN) {
-            where.is_draft = false;
-            where.verification_status = VerificationStatus.VERIFIED;
 
-        }
         console.log(where, userRole);
         const [data, total] = await this.repo.findAndCount({
             where,
             relations: {
                 media: true,
                 assigned_secretary: true,
-
             },
         });
 
