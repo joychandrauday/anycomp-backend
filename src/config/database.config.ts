@@ -2,6 +2,14 @@
 import { DataSource } from 'typeorm';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+import { Specialist } from '../entities/Specialist.entity';
+import { Secretary } from '../entities/Secretary.entity';
+import { Company } from '../entities/Company.entity';
+import { Media } from '../entities/Media.entity';
+import { PlatformFee } from '../entities/PlatformFee.entity';
+import { ServiceMaster } from '../entities/ServiceMaster.entity';
+import { ServiceOffering } from '../entities/ServiceOffering.entity';
+import { User } from '../entities/User.entity';
 
 dotenv.config();
 
@@ -16,9 +24,7 @@ export const AppDataSource = new DataSource(
 
       ssl: false,
 
-      entities: [
-        path.join(__dirname, '../entities/**/*.entity{.ts,.js}'),
-      ],
+      entities: [Specialist, Secretary, Company, Media, PlatformFee, ServiceMaster, ServiceOffering, User],
       migrations: [
         path.join(__dirname, '../migrations/*{.ts,.js}'),
       ],
@@ -32,12 +38,8 @@ export const AppDataSource = new DataSource(
       username: process.env.DB_USERNAME || 'postgres',
       password: process.env.DB_PASSWORD || 'password123',
       database: process.env.DB_DATABASE || 'specialists_db',
-
       ssl: false,
-
-      entities: [
-        path.join(__dirname, '../entities/**/*.entity{.ts,.js}'),
-      ],
+      entities: [Specialist, Secretary, Company, Media, PlatformFee, ServiceMaster, ServiceOffering, User],
       migrations: [
         path.join(__dirname, '../migrations/*{.ts,.js}'),
       ],

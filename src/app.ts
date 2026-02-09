@@ -100,8 +100,9 @@ class App {
         database: AppDataSource.isInitialized ? 'connected' : 'disconnected',
       });
     });
+    // app.ts / main.ts
+    this.app.set("trust proxy", 1); // ✅ only first proxy (Vercel)
 
-    this.app.set('trust proxy', true);
     // API Routes
     this.app.use('/auth', authRoutes);
     this.app.use('/api/v1/user', userRoutes);
