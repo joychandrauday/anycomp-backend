@@ -6,13 +6,17 @@ const authService = new AuthService();
 
 export const register = async (req: Request, res: Response) => {
   try {
-    const user = await authService.register(req.body);
+    const files = req.files as {
+      profile_image?: Express.Multer.File[];
+    };
+    const user = await authService.register(req.body, files);
     res.status(201).json({
       success: true,
       data: user,
       message: 'User registered successfully',
     });
   } catch (error: any) {
+    console.log(error);
     res.status(400).json({
       success: false,
       error: error.message,

@@ -5,6 +5,7 @@ import { Repository, MoreThan } from 'typeorm';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { jwtConfig } from '../../config/jwt.config';
 import { RolePermissions } from '../../middleware/rbac.middleware';
+import { CloudinaryUploader } from '../../utils/cloudinary.utils';
 
 export interface LoginResponse {
   user: {
@@ -35,7 +36,19 @@ export class AuthService {
   }
 
   /** Register a new user */
-  async register(data: RegisterDto): Promise<User> {
+  async register(data: RegisterDto, files: { [fieldname: string]: Express.Multer.File[] }): Promise<User> {
+
+    let profileImageUrl: string | undefined;
+
+    if (files?.profile_image?.length) {
+      const upload = await CloudinaryUploader.uploadFile(
+        files.profile_image[0],
+        'users'
+      );
+
+      profileImageUrl = upload.url;
+    }
+
     const existingUser = await this.userRepository.findOne({
       where: { email: data.email },
     });
@@ -54,6 +67,7 @@ export class AuthService {
       status: UserStatus.ACTIVE,
       department: data.department,
       permissions: RolePermissions[role as keyof typeof RolePermissions] || [],
+      profile_image: profileImageUrl
     });
 
     await this.userRepository.save(user);

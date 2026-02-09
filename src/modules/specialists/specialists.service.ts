@@ -97,6 +97,25 @@ export class SpecialistsService {
 
         return specialist;
     }
+    async findBySecretary(userId?: string, userRole?: UserRole): Promise<Specialist> {
+        const specialist = await this.repo.findOne({
+            where: {
+                assigned_secretary_id: userId
+            },
+            relations: [
+                'media',
+                'assigned_secretary'
+            ]
+        });
+        if (!specialist) throw new Error("Specialist not found");
+
+        // Only allow draft view for admins or the creator
+        if (specialist.is_draft && userRole !== UserRole.ADMIN && specialist.created_by_id !== userId) {
+            throw new Error("Not authorized to view this specialist");
+        }
+
+        return specialist;
+    }
     async findOneById(id: string, userId?: string, userRole?: UserRole): Promise<Specialist> {
         const specialist = await this.repo.findOne({
             where: { id },

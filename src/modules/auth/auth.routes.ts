@@ -11,12 +11,14 @@ import {
     getMe,
 } from './auth.controller';
 import { authMiddleware, AuthRequest } from './auth.middleware';
+import { upload } from '../secretary/secretary.routes';
 
 const router = Router();
 
 // Validation middleware
 const validateRequest = (req: AuthRequest, res: any, next: Function) => {
     const errors = validationResult(req);
+    console.log(errors);
     if (!errors.isEmpty()) {
         return res.status(400).json({
             success: false,
@@ -29,16 +31,21 @@ const validateRequest = (req: AuthRequest, res: any, next: Function) => {
 // Routes
 router.post(
     '/register',
+    upload.fields([
+        { name: 'profile_image', maxCount: 1 },
+    ]),
     [
         body('email').isEmail().normalizeEmail(),
         body('password').isLength({ min: 8 }),
         body('full_name').notEmpty().trim(),
-        body('role').optional().isIn(['admin', 'manager', 'specialist', 'viewer']),
-        body('department').optional().trim(),
+        body('role')
+            .optional()
+            .isIn(['admin', 'manager', 'specialist', 'viewer']),
     ],
     validateRequest,
     register
 );
+
 
 router.post(
     '/login',

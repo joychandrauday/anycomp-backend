@@ -38,6 +38,14 @@ export class SpecialistsController {
             res.status(404).json({ success: false, error: err.message });
         }
     }
+    static async findBySecretary(req: AuthRequest, res: Response) {
+        try {
+            const specialist = await specialistsService.findBySecretary(req.user?.id, req.user?.role);
+            res.json({ success: true, data: specialist });
+        } catch (err: any) {
+            res.status(404).json({ success: false, error: err.message });
+        }
+    }
     static async search(req: AuthRequest, res: Response) {
         try {
             const specialist = await specialistsService.searchSpecialistsByKeyword(req.query.q as string, req.user?.id, req.user?.role);

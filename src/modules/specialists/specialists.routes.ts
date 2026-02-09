@@ -14,6 +14,7 @@ router.get('/', SpecialistsController.findAll);
 router.get('/admin', authMiddleware, SpecialistsController.findAllAdmin);
 router.get('/service/search', authMiddleware, SpecialistsController.search);
 router.get('/:slug', SpecialistsController.findOne);
+router.get('/secretary/my', SpecialistsController.findBySecretary);
 router.post('/',
     upload.fields([
         { name: 'image_1', maxCount: 1 },
