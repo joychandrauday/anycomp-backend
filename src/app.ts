@@ -14,6 +14,7 @@ import { mediaRoutes } from './modules/media/media.routes';
 import { serviceMasterRoutes } from './modules/service-master/service-master.routes';
 import { serviceOfferingRoutes } from './modules/service-offerings/service-offering.coutes';
 import { secretaryRoutes } from './modules/secretary/secretary.routes';
+import { databaseMiddleware } from './middleware/databaseMiddleware';
 
 class App {
   public app: Application;
@@ -89,8 +90,8 @@ class App {
       next();
     });
   }
-
   private initializeRoutes(): void {
+    this.app.use(databaseMiddleware);
     // Health check
     this.app.get('/health', (req: Request, res: Response) => {
       res.json({
